@@ -61,7 +61,7 @@ def print_generated_sequences(inter_arrival_times, service_times):
 
 # generate , print , return inputs 
 def prepare_simulation_inputs(n, seed):
-    inter_arrival_times, service_times = generate_times(n, seed)
+    inter_arrival_times, service_times = generate_times(n, seed) # same seed for inter-arrival , service times
     print_generated_sequences(inter_arrival_times, service_times)
     return inter_arrival_times, service_times
 
