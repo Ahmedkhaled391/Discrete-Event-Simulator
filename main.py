@@ -2,7 +2,8 @@ from src.lcg import generate_times
 from src.metrics import calculate_metrics
 from src.queues import FCFS, LCFS, normalize_discipline
 from src.simulation import run_multi_server_simulation, run_single_server_simulation
-
+from src.warmup import run_simulation_with_warmup
+from charts.gantt import plot_gantt_chart, plot_waiting_bar_chart
 
 LINE = "=" * 61
 SMALL_LINE = "-" * 61
@@ -191,7 +192,7 @@ def print_configuration(n, seed, server_count, discipline=FCFS, warm_up_count=0)
     print(f"{'Servers':<22}: {server_count}")
     print(f"{'Discipline':<22}: {discipline}")
     print(f"{'Distribution':<22}: Uniform [1,10]")
-    print(f"{'Warm-up (k)':<22}: {warm_up_count}")
+    print(f"{'Warm-up (k)':<22}: {warm_up_count}")  # Now dynamically uses warm_up_count
     print(f"{'Max queue length':<22}: Unlimited")
 
 
@@ -219,24 +220,59 @@ def main():
     seed = int(input("Enter seed: "))
     server_count = int(input("Enter number of servers: "))
     discipline = input_discipline()
+    
+    # --- 2. ADD WARMUP INPUT ---
+    warmup_count = int(input("Enter warm-up count (k) [0 for none]: "))
 
-    inter_arrival_times, service_times = generate_times(n, seed)
+    # Generate times for ALL customers (n + warmup)
+    inter_arrival_times, service_times = generate_times(n + warmup_count, seed)
 
-    results, W, Q, utilizations, total_time = run_simulation(
+    # --- 3. RUN SIMULATION USING WARMUP LOGIC ---
+    # This automatically flags warmup rows and calculates metrics properly
+    sim_data = run_simulation_with_warmup(
         inter_arrival_times,
         service_times,
         server_count,
-        discipline
+        discipline,
+        warmup_count
     )
 
+    # Extract standard variables from the warm-up result dictionary
+    results = sim_data["results"]
+    W = sim_data["W"]
+    Q = sim_data["Q"]
+    utilizations = sim_data["utilizations"]
+    total_time = sim_data["total_time"]
+
     print_header()
-    print_configuration(n, seed, server_count, discipline, 0)
+    print_configuration(n, seed, server_count, discipline, warmup_count)
     print_generated_sequences(inter_arrival_times, service_times)
-    print_event_table(results)
+    
+    # Optional: If you want to show which ones are warmup in the table
+    print(SMALL_LINE)
+    print("EVENT TABLE (* = warm-up customer)")
+    print(f"{'#':<5}{'Arrive':<8}{'Begin':<8}{'End':<8}{'Server':<8}{'SysWait':<9}{'QWait':<7}")
+    for row in results:
+        marker = "*" if row.get("is_warmup", False) else " "
+        print(
+            f"{str(row['customer']) + marker:<5}"
+            f"{row['arrival']:<8}"
+            f"{row['begin']:<8}"
+            f"{row['end']:<8}"
+            f"{row['server']:<8}"
+            f"{row['system_wait']:<9}"
+            f"{row['queue_wait']:<7}"
+        )
+
     print_results(W, Q, utilizations, total_time)
     print_queue_discipline_comparison(inter_arrival_times, service_times, server_count)
     print_comparison_table(inter_arrival_times, service_times)
     print(LINE)
+
+    # --- 4. TRIGGER CHARTS AT THE END ---
+    print("Generating charts...")
+    plot_gantt_chart(results)
+    plot_waiting_bar_chart(results)
 
 
 if __name__ == "__main__":

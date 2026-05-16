@@ -1,109 +1,64 @@
 import matplotlib.pyplot as plt
 
-customers = [
-    (1, 0, 0, 3, 1),
-    (2, 1, 3, 7, 1),
-    (3, 2, 2, 5, 2),
-    (4, 4, 7, 9, 1),
-    (5, 6, 6, 10, 2),
-    (6, 8, 10, 13, 2)
-]
+def plot_gantt_chart(results):
+    if not results:
+        return
 
-servers = sorted(set(row[4] for row in customers))
+    # Extract server numbers from strings like 'S1', 'S2'
+    servers = sorted(set(int(row["server"][1:]) for row in results))
+    total_time = max(row["end"] for row in results)
 
-total_time = max(row[3] for row in customers)
+    plt.figure(figsize=(10, 5))
+    colors = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple"]
 
-waiting_times = {
-    customer: end - arrival
-    for customer, arrival, begin, end, server in customers
-}
+    for row in results:
+        customer = row["customer"]
+        begin = row["begin"]
+        end = row["end"]
+        server = int(row["server"][1:])
+        duration = end - begin
 
-plt.figure(figsize=(10, 5))
+        plt.barh(
+            y=server,
+            width=duration,
+            left=begin,
+            height=0.5,
+            color=colors[(server - 1) % len(colors)],
+            edgecolor="black"
+        )
+        plt.text(
+            begin + duration / 2, server, f"C{customer}",
+            ha="center", va="center", color="white", fontsize=9
+        )
 
-colors = [
-    "tab:blue",
-    "tab:orange",
-    "tab:green",
-    "tab:red",
-    "tab:purple"
-]
+    plt.xlabel("Simulation Time")
+    plt.ylabel("Servers")
+    plt.title("Gantt Chart")
+    plt.xlim(0, total_time)
+    plt.yticks(servers, [f"Server {s}" for s in servers])
+    plt.grid(axis="x", linestyle="--", alpha=0.5)
+    plt.show()
 
-for customer, arrival, begin, end, server in customers:
 
-    duration = end - begin
+def plot_waiting_bar_chart(results):
+    if not results:
+        return
 
-    plt.barh(
-        y=server,
-        width=duration,
-        left=begin,
-        height=0.5,
-        color=colors[(server - 1) % len(colors)],
-        edgecolor="black"
-    )
+    # Filter out warm-up customers so the chart only shows valid statistics
+    valid_results = [row for row in results if not row.get("is_warmup", False)]
+    
+    customer_numbers = [row["customer"] for row in valid_results]
+    waits = [row["system_wait"] for row in valid_results]
 
-    plt.text(
-        begin + duration / 2,
-        server,
-        f"C{customer}",
-        ha="center",
-        va="center",
-        color="white",
-        fontsize=9
-    )
+    plt.figure(figsize=(10, 5))
+    plt.bar(customer_numbers, waits, edgecolor="black")
 
-plt.xlabel("Simulation Time")
+    plt.xlabel("Customer Number")
+    plt.ylabel("System Wait Time")
+    plt.title("Waiting Time Bar Chart (Excluding Warm-up)")
 
-plt.ylabel("Servers")
+    for c, w in zip(customer_numbers, waits):
+        plt.text(c, w, str(round(w, 2)), ha="center", va="bottom")
 
-plt.title("Gantt Chart")
-
-plt.xlim(0, total_time)
-
-plt.yticks(
-    servers,
-    [f"Server {s}" for s in servers]
-)
-
-plt.grid(
-    axis="x",
-    linestyle="--",
-    alpha=0.5
-)
-
-plt.show()
-
-plt.figure(figsize=(10, 5))
-
-customer_numbers = list(waiting_times.keys())
-
-waits = list(waiting_times.values())
-
-plt.bar(
-    customer_numbers,
-    waits,
-    edgecolor="black"
-)
-
-plt.xlabel("Customer Number")
-
-plt.ylabel("System Wait Time")
-
-plt.title("Waiting Time Bar Chart")
-
-for c, w in zip(customer_numbers, waits):
-
-    plt.text(
-        c,
-        w,
-        str(w),
-        ha="center",
-        va="bottom"
-    )
-
-plt.grid(
-    axis="y",
-    linestyle="--",
-    alpha=0.5
-)
-
-plt.show()
+    plt.grid(axis="y", linestyle="--", alpha=0.5)
+    plt.show()

@@ -5,10 +5,10 @@ This module reuses the project's generator, simulation engine, queue
 disciplines, and base metrics instead of carrying a second simulation copy.
 """
 
-from lcg import generate_times
-from metrics import calculate_metrics
-from queues import FCFS, normalize_discipline
-from simulation import run_queue_simulation
+from .lcg import generate_times
+from .metrics import calculate_metrics
+from .queues import FCFS, normalize_discipline
+from .simulation import run_queue_simulation
 
 
 LINE = "=" * 65
