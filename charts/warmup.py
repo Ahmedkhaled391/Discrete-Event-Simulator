@@ -46,7 +46,7 @@ def observation_window(results):
         return 0, 0
 
     observation_start = min(row["arrival"] for row in post_results)
-    total_time = max(row["end"] for row in results)
+    total_time = max(row["end"] for row in post_results)
     window = total_time - observation_start
 
     if window <= 0:
