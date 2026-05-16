@@ -1,5 +1,6 @@
 from src.lcg import generate_times
 from src.metrics import calculate_metrics
+from src.queues import FCFS, LCFS, normalize_discipline
 from src.simulation import run_multi_server_simulation, run_single_server_simulation
 
 
@@ -7,11 +8,20 @@ LINE = "=" * 61
 SMALL_LINE = "-" * 61
 
 
-def run_simulation(inter_arrival_times, service_times, server_count):
+def run_simulation(inter_arrival_times, service_times, server_count, discipline=FCFS):
     if server_count == 1:
-        results = run_single_server_simulation(inter_arrival_times, service_times)
+        results = run_single_server_simulation(
+            inter_arrival_times,
+            service_times,
+            discipline
+        )
     else:
-        results = run_multi_server_simulation(inter_arrival_times, service_times, server_count)
+        results = run_multi_server_simulation(
+            inter_arrival_times,
+            service_times,
+            server_count,
+            discipline
+        )
 
     W, Q, utilizations, total_time = calculate_metrics(results, server_count)
 
@@ -44,6 +54,7 @@ def print_results(W, Q, utilizations, total_time):
         print("Server", i + 1, "utilization       U =", round(utilizations[i], 1), "%")
 
     print("Total simulation time        =", total_time, "time units")
+    print("Customers rejected           = 0")
 
 
 def format_utilizations(utilizations):
@@ -77,7 +88,8 @@ def print_comparison_table(inter_arrival_times, service_times):
     print(
         f"{'Servers':<10}"
         f"{'Avg Wait W':<14}"
-        f"{'Queue Q':<12}"
+        f"{'Queue Wait':<14}"
+        f"{'Q (queue)':<12}"
         f"{'Utilization':<35}"
         f"Comment"
     )
@@ -92,10 +104,78 @@ def print_comparison_table(inter_arrival_times, service_times):
         print(
             f"{server_label(server_count):<10}"
             f"{round(W, 3):<14}"
+            f"{round(average_queue_wait(results), 3):<14}"
             f"{round(Q, 3):<12}"
             f"{format_utilizations(utilizations):<35}"
             f"{comparison_comment(server_count)}"
         )
+
+
+def average_queue_wait(results):
+    if len(results) == 0:
+        return 0
+
+    total_queue_wait = sum(row["queue_wait"] for row in results)
+    return total_queue_wait / len(results)
+
+
+def queue_discipline_comment(discipline, fcfs_W, discipline_W):
+    if discipline == FCFS:
+        return "Baseline fairness"
+
+    if discipline_W < fcfs_W:
+        wait_text = "Lower W"
+    elif discipline_W > fcfs_W:
+        wait_text = "Higher W"
+    else:
+        wait_text = "Same W"
+
+    return wait_text + ", less fair"
+
+
+def print_queue_discipline_comparison(inter_arrival_times, service_times, server_count):
+    print(SMALL_LINE)
+    print("\nQUEUE DISCIPLINE COMPARISON")
+    print(
+        f"{'Discipline':<12}"
+        f"{'Avg Wait W':<14}"
+        f"{'Q (queue)':<12}"
+        f"{'Avg QWait':<14}"
+        f"Comment"
+    )
+
+    fcfs_results, fcfs_W, fcfs_Q, _fcfs_utilizations, _fcfs_total_time = run_simulation(
+        inter_arrival_times,
+        service_times,
+        server_count,
+        FCFS
+    )
+
+    for discipline in [FCFS, LCFS]:
+        if discipline == FCFS:
+            results = fcfs_results
+            W = fcfs_W
+            Q = fcfs_Q
+        else:
+            results, W, Q, _utilizations, _total_time = run_simulation(
+                inter_arrival_times,
+                service_times,
+                server_count,
+                discipline
+            )
+
+        print(
+            f"{discipline:<12}"
+            f"{round(W, 3):<14}"
+            f"{round(Q, 3):<12}"
+            f"{round(average_queue_wait(results), 3):<14}"
+            f"{queue_discipline_comment(discipline, fcfs_W, W)}"
+        )
+
+    print(
+        "LCFS uses a stack: newest waiting customer is served first, "
+        "so older waiting customers can wait longer."
+    )
 
 
 def print_header():
@@ -104,13 +184,14 @@ def print_header():
     print(LINE)
 
 
-def print_configuration(n, seed, server_count):
+def print_configuration(n, seed, server_count, discipline=FCFS, warm_up_count=0):
     print("Configuration:")
     print(f"{'Customers (n)':<22}: {n}")
     print(f"{'Seed':<22}: {seed}")
     print(f"{'Servers':<22}: {server_count}")
-    print(f"{'Discipline':<22}: FCFS")
+    print(f"{'Discipline':<22}: {discipline}")
     print(f"{'Distribution':<22}: Uniform [1,10]")
+    print(f"{'Warm-up (k)':<22}: {warm_up_count}")
     print(f"{'Max queue length':<22}: Unlimited")
 
 
@@ -120,22 +201,43 @@ def print_generated_sequences(inter_arrival_times, service_times):
     print("Service times       :", service_times)
 
 
-n = int(input("Enter number of customers: "))
-seed = int(input("Enter seed: "))
-server_count = int(input("Enter number of servers: "))
+def input_discipline():
+    while True:
+        discipline = input("Enter queue discipline (FCFS/LCFS): ").strip()
 
-inter_arrival_times, service_times = generate_times(n, seed)
+        if discipline == "":
+            return FCFS
 
-results, W, Q, utilizations, total_time = run_simulation(
-    inter_arrival_times,
-    service_times,
-    server_count
-)
+        try:
+            return normalize_discipline(discipline)
+        except ValueError:
+            print("Please enter FCFS or LCFS.")
 
-print_header()
-print_configuration(n, seed, server_count)
-print_generated_sequences(inter_arrival_times, service_times)
-print_event_table(results)
-print_results(W, Q, utilizations, total_time)
-print_comparison_table(inter_arrival_times, service_times)
-print(LINE)
+
+def main():
+    n = int(input("Enter number of customers: "))
+    seed = int(input("Enter seed: "))
+    server_count = int(input("Enter number of servers: "))
+    discipline = input_discipline()
+
+    inter_arrival_times, service_times = generate_times(n, seed)
+
+    results, W, Q, utilizations, total_time = run_simulation(
+        inter_arrival_times,
+        service_times,
+        server_count,
+        discipline
+    )
+
+    print_header()
+    print_configuration(n, seed, server_count, discipline, 0)
+    print_generated_sequences(inter_arrival_times, service_times)
+    print_event_table(results)
+    print_results(W, Q, utilizations, total_time)
+    print_queue_discipline_comparison(inter_arrival_times, service_times, server_count)
+    print_comparison_table(inter_arrival_times, service_times)
+    print(LINE)
+
+
+if __name__ == "__main__":
+    main()

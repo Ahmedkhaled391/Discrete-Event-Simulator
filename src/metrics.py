@@ -13,7 +13,10 @@ def calculate_metrics(results, server_count):
         server_busy_times[server_index] += service_time
 
     n = len(results)
-    total_simulation_time = results[-1]["end"] if n > 0 else 0
+    total_simulation_time = 0
+    for row in results:
+        if row["end"] > total_simulation_time:
+            total_simulation_time = row["end"]
 
     W = total_system_wait / n if n > 0 else 0
     Q = total_queue_wait / total_simulation_time if total_simulation_time > 0 else 0

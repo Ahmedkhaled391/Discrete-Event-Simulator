@@ -1,5 +1,12 @@
 try:
     from src.customer import Customer
+    from src.queues import (
+        FCFS,
+        LCFS,
+        add_waiting_customer,
+        normalize_discipline,
+        pop_next_waiting_customer,
+    )
     from src.server import (
         assign_customer_to_server,
         create_servers,
@@ -10,6 +17,13 @@ try:
     )
 except ModuleNotFoundError:
     from customer import Customer
+    from queues import (
+        FCFS,
+        LCFS,
+        add_waiting_customer,
+        normalize_discipline,
+        pop_next_waiting_customer,
+    )
     from server import (
         assign_customer_to_server,
         create_servers,
@@ -42,12 +56,16 @@ def start_customer_service(servers, customer, current_time, results):
     results.append(customer.to_result_row())
 
 
-def run_fcfs_simulation(inter_arrival_times, service_times, server_count):
+def run_queue_simulation(inter_arrival_times, service_times, server_count, discipline=FCFS):
+    if len(inter_arrival_times) != len(service_times):
+        raise ValueError("inter_arrival_times and service_times must have the same length")
+
+    discipline = normalize_discipline(discipline)
     arrival_times = calculate_arrival_times(inter_arrival_times)
 
     results = []
     servers = create_servers(server_count)
-    waiting_queue = []
+    waiting_customers = []
     next_arrival_index = 0
 
     # Next-event loop: stop only when no arrivals remain and all servers are idle.
@@ -65,9 +83,10 @@ def run_fcfs_simulation(inter_arrival_times, service_times, server_count):
         ):
             _finished_server, current_time = finish_next_departure(servers)
 
-            # FCFS: after a server becomes free, serve the first waiting customer.
-            if len(waiting_queue) > 0:
-                next_customer = waiting_queue.pop(0)
+            # A free server takes the next waiting customer according to the discipline.
+            next_customer = pop_next_waiting_customer(waiting_customers, discipline)
+
+            if next_customer is not None:
                 start_customer_service(servers, next_customer, current_time, results)
         else:
             # Otherwise, process the next arriving customer.
@@ -81,19 +100,32 @@ def run_fcfs_simulation(inter_arrival_times, service_times, server_count):
             next_arrival_index += 1
 
             # New arrivals only start immediately if no one is already waiting.
-            if has_available_server(servers) and len(waiting_queue) == 0:
+            if has_available_server(servers) and len(waiting_customers) == 0:
                 start_customer_service(servers, customer, current_time, results)
             else:
-                waiting_queue.append(customer)
+                add_waiting_customer(waiting_customers, customer)
 
     results.sort(key=lambda row: row["customer"])
 
     return results
 
 
-def run_single_server_simulation(inter_arrival_times, service_times):
-    return run_fcfs_simulation(inter_arrival_times, service_times, 1)
+def run_fcfs_simulation(inter_arrival_times, service_times, server_count):
+    return run_queue_simulation(inter_arrival_times, service_times, server_count, FCFS)
 
 
-def run_multi_server_simulation(inter_arrival_times, service_times, server_count):
-    return run_fcfs_simulation(inter_arrival_times, service_times, server_count)
+def run_lcfs_simulation(inter_arrival_times, service_times, server_count):
+    return run_queue_simulation(inter_arrival_times, service_times, server_count, LCFS)
+
+
+def run_single_server_simulation(inter_arrival_times, service_times, discipline=FCFS):
+    return run_queue_simulation(inter_arrival_times, service_times, 1, discipline)
+
+
+def run_multi_server_simulation(inter_arrival_times, service_times, server_count, discipline=FCFS):
+    return run_queue_simulation(
+        inter_arrival_times,
+        service_times,
+        server_count,
+        discipline
+    )
