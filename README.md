@@ -18,7 +18,8 @@ This project implements a full DES from scratch following the lab specification 
 ```
 DES/
 ├── README.md                          # Project documentation
-├── main.py                            # Entry point for running simulations
+├── main.py                            # CLI entry point for simulations
+├── app.py                             # GUI application (tkinter-based)
 ├── charts/
 │   ├── gantt.py                       # Gantt chart visualization
 │   └── waiting_bar.py                 # Waiting time distribution chart
@@ -70,14 +71,31 @@ To reduce transient start-up bias:
 
 ## Usage
 
-### Basic Run
+### GUI Application (Recommended)
+```bash
+python app.py
+```
+
+The graphical interface provides:
+- **Easy Parameter Input**: Set customers, seed, servers, warm-up count, and queue discipline
+- **Real-time Results**: View simulation metrics with warm-up comparison
+- **Background Processing**: Simulation runs without freezing the UI
+- **Result Export**: Save results to a text file for further analysis
+- **Multiple Disciplines**: Switch between FCFS and LCFS queue disciplines
+
+**GUI Features:**
+- Interactive input fields for all simulation parameters
+- Live results display with detailed metrics
+- Side-by-side comparison of simulations with and without warm-up
+- Save results to file functionality
+- Non-blocking simulation execution (runs in background thread)
+
+### CLI Application Usage
 ```bash
 python main.py
 ```
 
-The program will prompt for:
-- Number of customers for statistics (n)
-- Random seed for reproducibility
+The command-line interface will prompt for:
 - Number of servers
 - Warm-up customer count
 
@@ -107,6 +125,14 @@ python charts/waiting_bar.py
 ```
 
 ## Key Modules
+
+### `app.py`
+Tkinter-based GUI application for running simulations interactively:
+- User-friendly input interface for all simulation parameters
+- Real-time results display with metrics comparison
+- Background thread execution to prevent UI freezing
+- Save results to file functionality
+- Support for multiple queue disciplines (FCFS, LCFS)
 
 ### `src/lcg.py`
 Implements the Linear Congruential Generator for reproducible random number generation.
@@ -164,7 +190,11 @@ No external dependencies required. Uses Python 3.6+ standard library only.
 ```bash
 git clone https://github.com/Ahmedkhaled391/Discrete-Event-Simulator.git
 cd Discrete-Event-Simulator
-python main.py
+
+pip install -r requirements.txt
+
+streamlit run app.py
+
 ```
 
 ## Features
