@@ -5,19 +5,10 @@ This module reuses the project's generator, simulation engine, queue
 disciplines, and base metrics instead of carrying a second simulation copy.
 """
 
-import sys
-from pathlib import Path
-
-
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
-
-from src.lcg import generate_times
-from src.metrics import calculate_metrics
-from src.queues import FCFS, normalize_discipline
-from src.simulation import run_queue_simulation
+from lcg import generate_times
+from metrics import calculate_metrics
+from queues import FCFS, normalize_discipline
+from simulation import run_queue_simulation
 
 
 LINE = "=" * 65
