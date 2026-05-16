@@ -97,7 +97,3 @@ def run_single_server_simulation(inter_arrival_times, service_times):
 
 def run_multi_server_simulation(inter_arrival_times, service_times, server_count):
     return run_fcfs_simulation(inter_arrival_times, service_times, server_count)
-
-
-if __name__ == "__main__":
-    print("Run this project from main.py, not directly from src/simulation.py.")
